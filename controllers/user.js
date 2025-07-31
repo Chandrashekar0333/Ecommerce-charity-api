@@ -1,8 +1,10 @@
 let users = require("../models/user");
 const bycrpt = require("bcrypt");
+const jwt=require("jsonwebtoken")
+require("dotenv").config()
 async function register(req, res) {
   try {
-    const { name, email, password, mobileno } = req.body;
+    const { name, email, password, mobileno, role } = req.body;
     let existing_user = await users.findOne({ email: email });
     if (existing_user) {
       return res.status(400).json({
@@ -23,6 +25,7 @@ async function register(req, res) {
           email,
           password: hash,
           mobileno,
+          role,
         };
 
         let data = await users.insertOne(user);
@@ -46,9 +49,11 @@ async function register(req, res) {
 
 async function login(req, res) {
   try {
-    const { email, password } = req.body;
+    const { email, password,mobileno} = req.body;
 
-    let existing_user = await users.findOne({ email: email });
+    let existing_user = await users.findOne({
+      $or: [{ email: email }, { mobileno: mobileno }],
+    });
     if (existing_user) {
       bycrpt.compare(
         password,
@@ -62,10 +67,25 @@ async function login(req, res) {
           }
           if (result) {
             console.log(existing_user._id, existing_user.email);
+            jwt.sign(
+              { user_id: existing_user._id, email: existing_user.email },
+              process.env.JWT_SECRET,
+              function (err, token) {
+                if(err){
+                  return res.status(500).json({
+                    message:"Error in creating the token"
+                  })
+                };
             return res.status(200).json({
               status: "success",
               message: "User login successfull",
-           
+              token:token
+            });
+          })
+          } else {
+            return res.status(400).json({
+              status: "failed",
+              message: "Invalid Credentials",
             });
           }
         }
@@ -74,7 +94,7 @@ async function login(req, res) {
   } catch (err) {
     return res.status(400).json({
       status: "failed",
-      message: "Invalid Credentials",
+      message: err.message,
     });
   }
 }

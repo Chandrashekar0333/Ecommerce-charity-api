@@ -17,9 +17,10 @@ const userschema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    // role: {
-    //   type: Enumerator,
-    // },
+    role: {
+      type:String,
+      enum:['super_admin','admin','user']
+    },
   },
   { timestamps: true }
 );
